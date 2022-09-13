@@ -1,10 +1,11 @@
 <template>
-	 <!-- <canvas type="webgl" id="webgl" style="width: 100%; height: 450px;"></canvas> -->
 	 <div id="box">
 		<video  
-			v-if='myStore.videoUrl && isAudio ' 
+			v-if='myStore.videoUrl && myCover' 
 			class="video currency" 
+			:poster='myCover'
 			:src="myStore.videoUrl"
+			
 			ref="myVideo"
 		>
 		</video>
@@ -29,14 +30,7 @@
 			ref="myAudio"
 		></audio>
 	</div>
-	<div class="btn">
-		<!-- clickme -->
-		<!-- <PalyVue
-			:dom="myVideo"
-		>
-
-		</PalyVue> -->
-	</div>
+	
 	 <!-- <div class="clickeBox">
 		<div class="optin" v-for="(item,index) in arr" @click ="myClick(item)" :key="index"> 
 			{{item}}
@@ -51,53 +45,70 @@
 	import {ref,onMounted, reactive} from 'vue'
 	import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
 	import { DragControls } from 'three/examples/jsm/controls/DragControls'
-	// import {getQueryVariableLocation} from '../../utils/tools.js'
-	import { OrbitControls } from '../../utils/OrbitControls.js';
-
+	import axios from 'axios'
+	import {getQueryVariableLocation} from '../../utils/tools.js'
+	// import { OrbitControls } from '../../utils/OrbitControls.js';
 	
-	// import PalyVue from './Paly.vue';
-	// const r = getQueryVariableLocation('id')
-
+	const id = getQueryVariableLocation('id')
+	const token = getQueryVariableLocation('token')
+	const tokenType = getQueryVariableLocation('tokenType')
+	let headers = {
+		'Content-Type': 'application/json;charset=UTF-8',
+	}
+	headers[tokenType] = token
+	// 02939997-9d6b-4401-bd42-cdd6a8521662 token
+	// yk_wx_wx_mini tokenType
+	
 	const myVideo = ref(null) // 视频dom
 	const myAudio = ref(null) // 音频dom
-	const isAudio = ref(true)
 	const myStore = ref({ //测试数据
-			id: 1,
-			picUrl: null, 
-			videoUrl: "https://ciligongfang.oss-cn-chengdu.aliyuncs.com/6ce129574c06470399e2b5542be64ab9.mp4", 
-			// videoUrl: null, 
-			createTime: null, 
-			// audioUrl: "https://ciligongfang.oss-cn-chengdu.aliyuncs.com/b109e0980eb04455ac99da26bc33b3a9.mp3", 
-			textUrl: "刺梨饮料灌身", 
-			labelName: "刺梨饮料灌身"
+		id: 1,
+		picUrl: null, 
+		videoUrl: "https://ciligongfang.oss-cn-chengdu.aliyuncs.com/6ce129574c06470399e2b5542be64ab9.mp4", 
+		// videoUrl: null, 
+		createTime: null, 
+		// audioUrl: "https://ciligongfang.oss-cn-chengdu.aliyuncs.com/b109e0980eb04455ac99da26bc33b3a9.mp3", 
+		textUrl: "刺梨饮料灌身", 
+		labelName: "刺梨饮料灌身"
 	})
+	const getData = async ()=>{
+		const res = await axios.get(`/api/ar/arResources/details?id=${1}`,{},{
+			headers
+		})
+		myStore.value = res.data
+	}
 	const state = reactive ({
 		isLopo:false,
 		opty:false,//控制透明度
 	})
-	
+	let control = true;
 	let container, clock, mixer, activeAction, previousAction;
-	let camera, renderer, model ,controls;//相机 渲染器 模型 轨道控制器
+	let camera, renderer, model;//相机 渲染器 模型
 	let actions = {};
 	const scene = new THREE.Scene(); //场景
 	const myHeight = ref(0)
+	const myCover = ref(null)
 	let audio;
 	onMounted(()=>{
 		//myVideo.value 视频dom
 		//myAudio.value 音频dom
 
-		// const box = document.getElementById('app')
-		// myHeight.value = (window.innerHeight -box.offsetHeight) +'px'
-		// const canvasDiv = document.getElementById('canvasDiv')
+		const box = document.getElementById('app')
+		myHeight.value = (window.innerHeight -box.offsetHeight) +'px'
+		const canvasDiv = document.getElementById('canvasDiv')
 		// canvasDiv.style.height = myHeight.value
 		canvasDiv.addEventListener('click',play) 
+		const h = +(window.innerWidth/1.7).toFixed(0) //封面高度
+		myCover.value = myStore.value.videoUrl+`?x-oss-process=video/snapshot,t_50000,f_jpg,w_${window.innerWidth},h_${h}`
+		getData() //获取数据
+
 	})
 	
-	// const id = getQueryVariableLocation('id')
+
 	
 	const states = [ 'Idle', 'Walking', 'Running', 'Dance', 'Death', 'Sitting', 'Standing' ];
 	const emotes = [ 'Jump', 'Yes', 'No', 'Wave', 'Punch', 'ThumbsUp' ];
-	const arr = ['Jump', 'Yes', 'No', 'Wave', 'Punch', 'ThumbsUp','Walking']
+	// const arr = ['Jump', 'Yes', 'No', 'Wave', 'Punch', 'ThumbsUp','Walking'] // 动作名称数组
 	init()
 	async function  init () {
 
@@ -130,24 +141,24 @@
 		// 'http://192.168.2.193:8011/untitled.glb', //磁力
 		const loader = new GLTFLoader();
 		await loader.load( 
-			// 'https://miniapplet.ciligf.com/ar/resource/lib/RobotExpressive.glb', 
-			// 'http://192.168.2.193:8011/untitled.glb', //磁力
-			'http://192.168.2.193:8011/RobotExpressive.glb', 
+			'https://miniapplet.ciligf.com/ar/resource/lib/RobotExpressive.glb', 
+			// 'http://192.168.2.193:8011/untitled.glb', //刺梨
+			// 'http://192.168.2.193:8011/RobotExpressive.glb', 
 			function ( gltf ) {
 			model = gltf.scene;
 			model.name='myGltf'
-			// console.log(gltf.animations)
+			model.scale.set(0.5,0.5,0.5) //缩小模型
+			// console.log(model)
 			scene.add( model );
 			createGUI( model, gltf.animations );
-			initDragControls()
-			model.scale.set(0.5,0.5,0.5)
-			console.log(158,model)
+			initDragControls() //拖拽组件
+			
 
 		}, undefined, function ( e ) {
 			console.error( e );
 
 		} );
-		//antialias: true,
+		antialias: true,
 		renderer = new THREE.WebGLRenderer( {  alpha: true } );
 		renderer.setPixelRatio( window.devicePixelRatio );
 		renderer.setSize( window.innerWidth, window.innerHeight );
@@ -155,8 +166,6 @@
 		container.appendChild( renderer.domElement );
 		// renderer.setClearColor(0x949ba2, 1);
 		window.addEventListener( 'resize', onWindowResize );
-
-		// controls = new OrbitControls(camera,renderer.domElement) //轨道控制器
 		
 		animate()
 	}	
@@ -186,6 +195,7 @@
 			}
 
 		}
+		console.log
 		activeAction = actions[ 'Punch' ];
 		fadeToAction( 'Walking', 0.2 );
 		// actions.Punch.play()
@@ -223,19 +233,26 @@
 	
 		var dragControls = new DragControls(objects, camera, renderer.domElement);
 		dragControls.transformGroup = true
-		dragControls.addEventListener( 'dragstart', function ( event ) {
+		// dragControls.addEventListener( 'dragstart', function ( event ) {//移动开始
 			
 
-		} );
-		
-		
-		dragControls.addEventListener( 'dragend', function ( event ) {
+		// } );
+		// dragControls.addEventListener( 'dragend', function ( event ) {//移动结束
 
-			// console.log(event.object)
+		// 	// console.log(event.object)
 
-		} );
+		// } );
+		dragControls.addEventListener('hoveron',()=>{
+		
+			control = false
+		})
+		dragControls.addEventListener('hoveroff',()=>{
+		
+			control = true
+		})
+		
 	}
-	//动作
+	//动画
 	function animate() {
 
 		const dt = clock.getDelta();
@@ -251,11 +268,8 @@
 	}
 	
 
-	camera.position.set(0,0, 10 ); //镜头摆放位置 x越大向右靠 y越大向上靠 
-	camera.lookAt( new THREE.Vector3(0, 0, 0 ) );// 镜头对准方向 x越大准星越靠右 y越大准星越靠上
-    
-
-	
+	camera.position.set(-1,0.5, 10 ); //镜头摆放位置 x越大向右靠 y越大向上靠 
+	camera.lookAt( new THREE.Vector3(-1, 0.5, 0 ) );// 镜头对准方向 x越大准星越靠右 y越大准星越靠上
 	// setInterval(()=>{
 	// 	camera.position.x += 0.01
 	// 	camera.position.y +=0.01
@@ -266,6 +280,7 @@
 	// camera.position.x = -5
 	// camera.position.y = 8.5
 	const play = ()=>{
+		if(!control) return
 		const video = myVideo.value
 		if(!video) return
 		// video.requestFullscreen()
@@ -282,6 +297,14 @@
 		}
 
 	}
+	window.addEventListener('resize',()=>{
+		//更新摄像头
+		camera.aspect = window.innerWidth / window.innerHeight
+		//更新投影矩阵
+		camera.updateProjectionMatrix();
+		//更新渲染器
+		renderer.setSize(window.innerWidth,window.innerHeight)
+	})
 </script>
 
 <style>
